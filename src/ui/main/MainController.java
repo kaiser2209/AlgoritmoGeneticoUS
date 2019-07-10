@@ -6,6 +6,8 @@
 package ui.main;
 
 import java.net.URL;
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.ResourceBundle;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
@@ -28,6 +30,14 @@ public class MainController implements Initializable {
     private TextField txtTaxaMutacao;
     @FXML
     private TextField txtGeracoes;
+    @FXML
+    private TextField txtPosX;
+    @FXML
+    private TextField txtPosY;
+    @FXML
+    private TextField txtAptidao;
+    @FXML
+    private TextField txtGeracao;
 
     /**
      * Initializes the controller class.
@@ -38,13 +48,23 @@ public class MainController implements Initializable {
     }    
 
     @FXML
-    private void executaAlgoritmo(ActionEvent event) {
+    private void executaAlgoritmo(ActionEvent event) throws ParseException {
+        NumberFormat nf = NumberFormat.getInstance();
         int populacao = Integer.valueOf(txtPopulacao.getText());
         int geracoes = Integer.valueOf(txtGeracoes.getText());
-        float taxaMutacao = Float.valueOf(txtTaxaMutacao.getText()) / 100;
-        float taxaCruzamento = Float.valueOf(txtTaxaCruzamento.getText()) / 100;
-        AlgGenetico ag = new AlgGenetico(populacao, geracoes, taxaCruzamento, taxaMutacao);
+        float taxaMutacao = nf.parse(txtTaxaMutacao.getText()).floatValue() / 100;
+        float taxaCruzamento = nf.parse(txtTaxaCruzamento.getText()).floatValue() / 100;
+        //Inicializa o Algoritmo Genético
+        AlgGenetico ag = new AlgGenetico(populacao, geracoes, taxaCruzamento, taxaMutacao, this);
+        //Executa o Algoritmo Genético
         ag.executa();
+    }
+    
+    public void setResultados(double x, double y, double aptidao, int geracao) {
+        txtPosX.setText(String.format("%.6f", x));
+        txtPosY.setText(String.format("%.6f", y));
+        txtAptidao.setText(String.format("%.8f", aptidao));
+        txtGeracao.setText(String.valueOf(geracao));
     }
     
 }

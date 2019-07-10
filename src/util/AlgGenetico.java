@@ -9,6 +9,7 @@ import dados.Bairro;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
+import ui.main.MainController;
 
 /**
  *
@@ -22,9 +23,11 @@ public class AlgGenetico {
     private int totalGeracoes;
     private float taxaCruzamento;
     private float taxaMutacao;
+    private MainController controller;
+    private int melhorGeracao;
     
     public AlgGenetico(int tamanhoPopulacao, int totalGeracoes, float taxaCruzamento,
-            float taxaMutacao) {
+            float taxaMutacao, MainController controller) {
         //Chama o método que armazena os dados referente aos bairros no vetor
         criarBairros();
         //Armazena o tamanho da população que será utilizada
@@ -32,6 +35,7 @@ public class AlgGenetico {
         this.totalGeracoes = totalGeracoes;
         this.taxaCruzamento = taxaCruzamento;
         this.taxaMutacao = taxaMutacao;
+        this.controller = controller;
     }
     
     private void criarBairros() {
@@ -94,84 +98,112 @@ public class AlgGenetico {
     }
     
     public void executa() {
+        //Gera a população aleatoriamente
         geraPopulacao();
+        //Ordena a população baseado na melhor Aptidão
         Collections.sort(populacao);
-        populacao.forEach((us) -> {
-            System.out.println(us.toString());
-        });
+        //populacao.forEach((us) -> {
+        //    System.out.println(us.toString());
+        //});
+        double melhorAptidao = 0;
         do {
+            //Salva o melhor indíviduo para ser usado na próxima geração
             UnidadeSaude melhorIndividuo = new UnidadeSaude(populacao.get(0).getPosX(),
                 populacao.get(0).getPosY(), populacao.get(0).getAptidao());
-            
+            //Realiza o cruzamento dos indivíduos
             ArrayList<UnidadeSaude> novaPopulacao = realizaCruzamento(7, 6);
-            
+            //Realiza a mutação da nova população (filhos)
             realizaMutacao(novaPopulacao);
-            
+            //Adiciona o melhor indivíduo a nova população
             novaPopulacao.add(melhorIndividuo);
+            //Ordena a população baseado na melhor Aptidão
             Collections.sort(novaPopulacao);
-            
+            //Substitui a população anterior pela nova
             populacao = novaPopulacao;
-            
-            System.out.print("Geração " + geracaoAtual);
-            System.out.print(" - Melhor Indivíduo: ");
-            System.out.println(populacao.get(0).toString());
-            
+            //Estrutura condicional que verifica e armazena a geração que teve o melhor indivíduo
+            if (geracaoAtual > 0) {
+                if (populacao.get(0).getAptidao() < melhorAptidao) {
+                    melhorAptidao = populacao.get(0).getAptidao();
+                    melhorGeracao = geracaoAtual;
+                }
+            } else {
+                melhorAptidao = populacao.get(0).getAptidao();
+            }
             geracaoAtual++;
         } while (geracaoAtual < totalGeracoes);
+        //Envia os dados da execução do algoritmo para a tela da aplicação
+        controller.setResultados(populacao.get(0).posX, populacao.get(0).posY,
+                populacao.get(0).getAptidao(), melhorGeracao);
+        
     }
     
     private void realizaMutacao(ArrayList<UnidadeSaude> populacao) {
         Random rnd = new Random();
         float r;
         for (UnidadeSaude us : populacao) {
+            //Número aleatório que testa se vai acontecer a mutação no valor x
             r = rnd.nextFloat();
             if (r < taxaMutacao) {
                 float novoX = rnd.nextFloat() * 7;
                 us.setPosX(novoX);
             }
+            //Número aleatório que testa se vai aconter a mutação no valor y
             r = rnd.nextFloat();
             if (r < taxaMutacao) {
                 float novoY = rnd.nextFloat() * 6;
                 us.setPosY(novoY);
             }
+            //Calcula a nova aptidão após realizada a mutação
             us.setAptidao(calculaObjetivo(us.getPosX(), us.getPosY()));
         }
     }
     
     private ArrayList<UnidadeSaude> realizaCruzamento(float limiteX, float limiteY) {
+        //Lista que vai armazenar a lista dos pais selecionados
         ArrayList<UnidadeSaude> pais = new ArrayList<>();
+        //Lista que vai armazenar a nova população originada do cruzamento
         ArrayList<UnidadeSaude> novaPopulacao = new ArrayList<>();
+        //Lista que vai conter os 3 indíviduos escolhidos pelo método de torneio
         ArrayList<UnidadeSaude> selecao;
+        //Escolhe os indíviduos para cruzamento (2 * populacao) - 2
         while (pais.size() < (2 * tamanhoPopulacao) - 2) {
             Random r = new Random();
             selecao = new ArrayList<>();
             for (int z = 0; z < 3; z++) {
+                //Gera um número aleatório para o método de seleção torneio
                 int selecionado = r.nextInt(populacao.size());
+                //Armazena o indivíduo localizado na posição escolhida aleatoriamente
                 selecao.add(populacao.get(selecionado));
             }
+            //Ordena os 3 selecionados de acordo com a melhor aptidão
             Collections.sort(selecao);
+            //Número aleatório gerado para determinar se o indivíduo escolhido será o melhor ou o pior dos 3
             float k = r.nextFloat();
-            
+            /*Estrutura que avalia se será escolhido o melhor ou o pior indivíduo
+             *para o cruzamento. 60% de chances do melhor ser escolhido e 40% de chances
+             *do pior ser escolhido*/
             if (k < 0.6f) {
                 pais.add(selecao.get(0));
             } else {
                 pais.add(selecao.get(2));
             }
         }
-        System.out.println("Lista de Pais: ");
-        for (UnidadeSaude us : pais) {
-            System.out.println(us.toString());
-        }
+
         for (int i = 0; i < pais.size(); i += 2) {
             Random rnd = new Random();
+            //Número aleatório usado para testar se vai aconter o cruzamento
             float r = rnd.nextFloat();
             
             if (r < taxaCruzamento) {
+                //Geração aleatório do valor beta (-0.25 à 1.25)
                 float beta = (rnd.nextFloat() * 1.5f) - 0.25f;
                 double xFilho, yFilho;
+                //Cálculo dos valor x e y do filho baseado no número beta
                 xFilho = pais.get(i).getPosX() + beta * (pais.get(i + 1).getPosX() - pais.get(i).getPosX());
                 yFilho = pais.get(i).getPosY() + beta * (pais.get(i + 1).getPosY() - pais.get(i).getPosY());
-                
+                /*Corrige os valores de x e y do filho se caso estiver fora
+                **dos valores permitidos 0 <= x <= 7, 0 <= y <= 6
+                */
                 while (xFilho < 0) {
                     xFilho += 1;
                 }
@@ -184,29 +216,31 @@ public class AlgGenetico {
                 while (yFilho > limiteY) {
                     yFilho -= 1;
                 }
+                //Adiciona o novo filho a nova população
                 novaPopulacao.add(new UnidadeSaude(xFilho, yFilho, calculaObjetivo(xFilho, yFilho)));
             } else {
+                /*Caso não haja cruzamento, é sorteado aleatoriamente qual dos pais
+                **vai para a próxima geração.
+                */
                 int p = rnd.nextInt(2);
+                //Adiciona o pai selecionado a nova população
                 novaPopulacao.add(new UnidadeSaude(pais.get(i + p).getPosX(), 
                     pais.get(i + p).getPosY(), pais.get(i + p).getAptidao()));
             }
         }
         
-        System.out.println("Filhos:");
-        for (UnidadeSaude us : novaPopulacao) {
-            System.out.println(us.toString());
-        }
-        
-        System.out.println();
-        
         return novaPopulacao;
     }
     
     private void geraPopulacao() {
+        //Gera a população aleatoriamente de acordo com o tamanho máximo definido
         for (int i = 0; i < tamanhoPopulacao; i++) {
             Random r = new Random();
+            //Gera um número aleatório que varia de 0 até 7 (double)
             double x = r.nextDouble() * 7;
+            //Gera um número aleatório que varia de 0 até 6 (double)
             double y = r.nextDouble() * 6;
+            //Cria um novo indivíduo e armazena na lista população
             populacao.add(new UnidadeSaude(x, y, calculaObjetivo(x, y)));
         }
     }
